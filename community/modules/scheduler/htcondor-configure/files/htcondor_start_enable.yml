@@ -1,0 +1,10 @@
+---
+- name: Start and enable HTCondor
+  become: true
+  hosts: localhost
+  tasks:
+  - name: start HTCondor
+    ansible.builtin.service:
+      name: condor
+      state: started
+      enabled: true

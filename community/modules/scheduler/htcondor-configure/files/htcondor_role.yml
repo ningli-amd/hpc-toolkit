@@ -1,0 +1,37 @@
+---
+- name: Configure HTCondor Role
+  become: true
+  hosts: localhost
+  tasks:
+  - name: Remove default HTCondor configuration
+    ansible.builtin.file:
+      name: /etc/condor/config.d/00-htcondor-9.0.config
+      state: absent
+  - name: set HTCondor role
+    ansible.builtin.copy:
+      dest: /etc/condor/config.d/01-role
+      content: |
+        use role:{{ htcondor_role }}
+  - name: Configure VM to be HTCondor Central Manager
+    when: htcondor_role == 'get_htcondor_central_manager'
+    block:
+    - name: set HTCondor Central Manager
+      ansible.builtin.copy:
+        dest: /etc/condor/config.d/00-central-manager
+        content: |
+          CONDOR_HOST={{ ansible_default_ipv4.address }}
+  - name: Read HTCondor Central Manager from metadata
+    when: htcondor_role != 'get_htcondor_central_manager'
+    block:
+    - name: Read metadata central-manager
+      uri:
+        url: http://metadata.google.internal/computeMetadata/v1/instance/attributes/central-manager
+        return_content: true
+        headers:
+          Metadata-Flavor: "Google"
+      register: cm
+    - name: set HTCondor Central Manager
+      ansible.builtin.copy:
+        dest: /etc/condor/config.d/00-central-manager
+        content: |
+          CONDOR_HOST={{ cm.content }}

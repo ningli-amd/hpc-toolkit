@@ -1,0 +1,47 @@
+---
+- name: ensure HTCondor is installed
+  hosts: all
+  become: true
+  tasks:
+  - name: Upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+  - name: setup HTCondor yum repository
+    yum:
+      name:
+      - epel-release
+      - https://research.cs.wisc.edu/htcondor/repo/9.x/htcondor-release-current.el7.noarch.rpm
+  - name: install HTCondor
+    yum:
+      name: condor
+      state: latest
+  - name: ensure token directory
+    file:
+      path: /etc/condor/tokens.d
+      mode: 0700
+      owner: root
+      group: root
+      recurse: true
+  - name: Ensure HTCondor is stopped and disabled. Must configure at boot!
+    ansible.builtin.service:
+      name: condor
+      enabled: false
+      state: stopped
+  - name: Ensure that firewall is started and enabled
+    ansible.builtin.service:
+      name: firewalld
+      enabled: true
+      state: started
+  - name: Ensure that only root and condor users can access service account
+    shell: |
+      firewall-cmd --direct --permanent --add-rule ipv4 filter OUTPUT_direct 1 \
+          -m owner --uid-owner root -p tcp -d metadata.google.internal --dport 80 -j ACCEPT
+      firewall-cmd --direct --permanent --add-rule ipv4 filter OUTPUT_direct 2 \
+          -m owner --uid-owner condor -p tcp -d metadata.google.internal --dport 80 -j ACCEPT
+      firewall-cmd --direct --permanent --add-rule ipv4 filter OUTPUT_direct 3 \
+          -p tcp -d metadata.google.internal --dport 80 -j DROP
+      firewall-cmd --direct --permanent --add-rule ipv4 filter OUTPUT_direct 4 \
+          -p tcp -d metadata.google.internal --dport 8080 -j DROP
+      firewall-cmd --permanent --zone=public --add-port=9618/tcp
+      firewall-cmd --reload

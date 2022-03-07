@@ -1,0 +1,16 @@
+---
+- name: Secure HTCondor
+  become: yes
+  hosts: localhost
+  tasks:
+  - name: Set HTCondor credentials
+    ansible.builtin.shell: |
+      set -e
+      export CLOUDSDK_PYTHON=/usr/bin/python
+      POOL_PASSWORD=$(gcloud secrets versions access latest --secret={{ password_id }})
+      echo -n "$POOL_PASSWORD" | sh -c "condor_store_cred add -c -i -"
+      umask 0077
+      TRUST_DOMAIN=$(condor_config_val TRUST_DOMAIN)
+      condor_token_create -identity condor@$TRUST_DOMAIN > /etc/condor/tokens.d/condor@$TRUST_DOMAIN
+    args:
+      creates: /etc/condor/passwords.d/POOL
