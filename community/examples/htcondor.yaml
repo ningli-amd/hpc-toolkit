@@ -30,6 +30,8 @@ deployment_groups:
   - source: modules/network/vpc
     kind: terraform
     id: network1
+    outputs:
+    - network_name
   - source: community/modules/scripts/htcondor-install
     kind: terraform
     id: htcondor_install
